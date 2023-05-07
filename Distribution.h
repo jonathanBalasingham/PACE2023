@@ -136,10 +136,13 @@ private:
     }
 
     string get_bucket(boost::dynamic_bitset<> bitmask, boost::dynamic_bitset<> x) {
-        boost::dynamic_bitset<> bucket {};
+        boost::dynamic_bitset<> bucket {bitmask.count(), 0};
+        int j = 0;
         for (int i = 0; i < bitmask.size(); ++i) {
-            if (bitmask[i])
-                bucket.push_back(x[i]);
+            if (bitmask[i]) {
+                bucket[j] = x[i];
+                j++;
+            }
         }
         string buffer;
         to_string(bucket, buffer);
