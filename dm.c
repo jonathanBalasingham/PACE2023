@@ -44,7 +44,7 @@ Montpellier, decembre 2000 et Paris, novembre 2010
 
 #define DEBUG 0		/* si 0 aucune sortie graphique!! */
 
-/* dm.h definit les constantes FEUILLE, MODULE, etc... 
+/* dm.h definit les constantes LEAF, MODULE, etc...
 ainsi que les structures node et fils. Les autres
 structures n'ont pas a etre connues par les programmes
 exterieurs et sont donc definies ici. */
@@ -724,20 +724,20 @@ void printnoeud(node * N, int level)
     case ARTEFACT:
 	printf("Artefact\n");
 	break;
-    case SERIE:
+    case SERIES:
 	printf("Serie \n");
 	break;
-    case PARALLELE:
+    case PARALLEL:
 	printf("Parallele \n");
 	break;
-    case PREMIER:
+    case PRIME:
 	printf("Premier \n");
 	break;
     }
 
     do {
 	nfils = ffils->pointe;
-	if (nfils->type == FEUILLE) {
+	if (nfils->type == LEAF) {
 	    for (i = 0; i < level; i++)
 		printf("  |");
 	    printf("  +--");
@@ -760,7 +760,7 @@ void printarbre(node * N)
 void typenoeud(node * N, int *L2, int *R2, vertex **S)
 {
   // type recursivement l'arbre
-  if(N->type == FEUILLE)
+  if(N->type == LEAF)
     return;
   else if (N->type != UNKN)
     {
@@ -789,21 +789,21 @@ void typenoeud(node * N, int *L2, int *R2, vertex **S)
     // ah ah les deux premiers fils forment un module
     // on recherche si adjacents
     {
-      N->type = PARALLELE; // sera modifie si adjacence
+      N->type = PARALLEL; // sera modifie si adjacence
       a1=S[i]->adj;
       while(a1!=NULL)
 	{
 	  if(a1->pointe->place == S[j]->place)
 	    // adjacence trouvee !
 	    {
-	      N->type = SERIE;
+	      N->type = SERIES;
 	      break;
 	    }
 	  a1=a1->suiv;
 	}
     }
   else
-    N->type = PREMIER;
+    N->type = PRIME;
   
     fils *ffils;
     ffils = N->fils;
@@ -1197,7 +1197,7 @@ sortie: un pointeur sur un arbre de decomposition modulaire
 	if(F->fv <= fortg[k] && F->lv >= fortd[k] )
 	  {	
 	    if(fortg[k]==fortd[k]) // on a une feuille
-	      Nouv = nouvnoeud(FEUILLE, F, S[fortg[k]]->nom, fortg[k], fortd[k]);
+	      Nouv = nouvnoeud(LEAF, F, S[fortg[k]]->nom, fortg[k], fortd[k]);
 	    else
 	      Nouv = nouvnoeud(UNKN, F, -1,  fortg[k], fortd[k]);
 	    ajoutfils(F, Nouv);

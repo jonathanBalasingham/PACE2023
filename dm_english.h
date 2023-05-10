@@ -66,29 +66,29 @@ typedef struct {
 
 /********************************
 Output : definition of modular decomposition tree.
-Each internal node is labelled SERIE (for series), PARALLELE (for parallel) or PREMIER (for prime) depending of the quotient's type.
-Each leaf is labelled FEUILLE and also contains the vertex number of the leaf.
+Each internal node is labelled SERIES (for series), PARALLEL (for parallel) or PRIME (for prime) depending of the quotient's type.
+Each leaf is labelled LEAF and also contains the vertex number of the leaf.
 As the tree is an inclusion tree, the vertex-set corresponding to an internal node correspond to the vertices numbers of the leaves that descend from that tree. The function decomposition_modulaire() return a pointer to the root of the tree.
 */
 
 
 /* define the type of nodes. UNKN,MODULE,ARTEFACT are for internal use*/
 
-#define FEUILLE 0  // the node is a leaf
+#define LEAF 0  // the node is a leaf
 #define UNKN 1
 #define MODULE 2
 #define ARTEFACT 3
-#define SERIE 4    // series composition
-#define PARALLELE 5  // parallel composition
-#define PREMIER 6  // prime composition
+#define SERIES 4    // series composition
+#define PARALLEL 5  // parallel composition
+#define PRIME 6  // prime composition
 
 /* defines a node of the tree */
 
 typedef struct Noeud {
-  int type;	// is FEUILLE, SERIE, PARALLELE or PREMIER
+  int type;	// is LEAF, SERIES, PARALLEL or PRIME
   struct Noeud *pere;	// adress of parent node, NULL if root
-  struct Fils *fpere;	// points the head of the linked list of sons (if type is not FEUILLE, else is NULL)
-  int nom;	// if type=FEUILLE, number of the corresponding vertex of the graph
+  struct Fils *fpere;	// points the head of the linked list of sons (if type is not LEAF, else is NULL)
+  int nom;	// if type=LEAF, number of the corresponding vertex of the graph
   struct Fils *fils; // points the head of the linked list of sons
   struct Fils *lastfils;  // internal use (points the last item in the listed list of sons)
   int id;	// internal use (node unique ID)
@@ -97,11 +97,11 @@ typedef struct Noeud {
 
 } node;
 
-/* linked list that strore the sons of an internal node (in any order) */
+/* linked list that stores the sons of an internal node (in any order) */
 
 typedef struct Fils {
-  struct Noeud *pointe; // adress of the node in the tree
-  struct Fils *suiv; // adress of the next pair in the list, NULL if last
+  struct Noeud *pointe; // address of the node in the tree
+  struct Fils *suiv; // address of the next pair in the list, NULL if last
 } fils;
 
 /* prototype of the function.

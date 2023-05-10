@@ -10,6 +10,7 @@
 #include <ranges>
 #include <set>
 #include <algorithm>
+#include "dm_english.h"
 
 using AdjacencyDict = std::map<int, std::map<int, int>>;
 
@@ -29,6 +30,25 @@ public:
         adjacency_dict = {};
         for (int i = 0; i < size; ++i) {
             adjacency_dict.insert({i, std::map<int, int>()});
+        }
+    }
+
+    Graph(graph g) {
+        nnodes = g.n;
+        max_red_degree = 0;
+        adjacency_dict = {};
+        nedges = 0;
+
+        for (int i = 0; i < nnodes; ++i) {
+            adjacency_dict.insert({i, std::map<int, int>()});
+        }
+
+        for (int i = 0; i < g.n; ++i) {
+            for (auto n = g.G[i]; n != NULL; n=n->suiv) {
+                adjacency_dict[i][n->s] = 1;
+                adjacency_dict[n->s][i] = 1;
+                //add_edge(i, n->s);
+            }
         }
     }
 
@@ -83,8 +103,39 @@ public:
             return v;
         } else {
             // probably throw an exception
-            throw std::runtime_error("Node not found in graph");
+            std::cout << n;
+            throw std::runtime_error("Node not found in graph" );
         }
+    }
+
+    void add_neighbors(int n, const std::set<int>& vs) {
+        for (auto v : vs) {
+            adjacency_dict[n][v] = 1;
+            nedges++;
+        }
+    }
+
+    void add_node(int n) {
+        if (!has_node(n)) {
+            adjacency_dict[n] = std::map<int, int>();
+            nnodes++;
+        }
+    }
+
+    Graph subgraph(const vector<int>& v) {
+        auto g = Graph();
+        std::set<int> v_as_set(v.begin(), v.end());
+
+        for (auto vertex: v) {
+            g.add_node(vertex);
+            auto vertex_neighbors = neighbors(vertex);
+            auto to_keep = std::set<int>();
+            std::set_intersection(vertex_neighbors.begin(), vertex_neighbors.end(),
+                                  v_as_set.begin(), v_as_set.end(), inserter(to_keep, to_keep.begin()));
+            g.add_neighbors(vertex, to_keep);
+        }
+
+        return g;
     }
 
     int get_red_degree(int n) {
@@ -97,7 +148,7 @@ public:
         return degree;
     }
 
-    int get_max_red_degree() {
+    int compute_max_red_degree() {
         int mrd = 0;
         for (auto v : vertices()) {
             auto rd = get_red_degree(v);
@@ -107,6 +158,8 @@ public:
         return mrd;
     }
 
+    int get_max_red_degree(){ return max_red_degree; }
+
     void contract(int a, int b) {
         // a is kept, b is thrown out
         std::vector<int> set_diff;
@@ -115,10 +168,15 @@ public:
         std::set_symmetric_difference(na.begin(), na.end(),
                                       nb.begin(), nb.end(), std::back_inserter(set_diff));
         //auto removed_vertex = adjacency_dict.at(b);
+        int new_red_degree = set_diff.size();
         adjacency_dict.erase(b);
         for (auto vertex : set_diff) {
             adjacency_dict[a][vertex] = 2;
         }
+
+        bool extra_edge = adjacency_dict[a].find(a) != adjacency_dict[a].end();
+        if (extra_edge)
+            new_red_degree--;
 
         for (auto vertex : vertices()) {
             if (adjacency_dict.at(vertex).find(b) != adjacency_dict.at(vertex).end()) {
@@ -128,7 +186,7 @@ public:
 
         adjacency_dict.at(a).erase(a);
         nnodes--;
-        max_red_degree = std::max(max_red_degree, get_max_red_degree());
+        max_red_degree = std::max(max_red_degree, new_red_degree);
     }
 
     int red_degree_after_contraction(int a, int b) {
@@ -138,11 +196,24 @@ public:
         std::set_symmetric_difference(na.begin(), na.end(),
                                       nb.begin(), nb.end(), std::back_inserter(set_diff));
         int rd = set_diff.size();
+        bool extra_edge = adjacency_dict[a].find(a) != adjacency_dict[a].end();
+        if (extra_edge)
+            rd--;
+
         return std::max(max_red_degree, rd);
     }
 
     int simulate_contractions() {
 
+    }
+
+    std::vector<int> sym_diff(int a, int b) {
+        auto na = neighbors(a);
+        auto nb = neighbors(b);
+        std::vector<int> sd;
+        std::set_symmetric_difference(na.begin(), na.end(), nb.begin(),
+                                      nb.end(), std::back_inserter(sd));
+        return sd;
     }
 
 };

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include "Distribution.h"
+#include "solver.h"
 
 
 std::vector<std::string> split(const std::string& s, const std::string& delimiter) {
@@ -92,14 +92,54 @@ void compte(node *N, int level, int *C) {
     fils *F;
     switch(N->type)
     {
-        case SERIE: C[4*level]++; break;
-        case PARALLELE: C[4*level+1]++; break;
-        case PREMIER: C[4*level+2]++; break;
-        case FEUILLE: C[4*level+3]++; break;
+        case SERIES: C[4 * level]++; break;
+        case PARALLEL: C[4 * level + 1]++; break;
+        case PRIME: C[4 * level + 2]++; break;
+        case LEAF: C[4 * level + 3]++; break;
     }
-    if(N->type!=FEUILLE)
+    if(N->type != LEAF)
         for(F=N->fils;F!=NULL;F=F->suiv)
             compte(F->pointe, level+1, C);
+}
+
+
+/*
+ * The idea is to run this function on the MDTree repeatedly
+ * and on each iteration, remove modules (portion of tree with leaves only).
+ * On each application the tree will be pruned.
+ * */
+void traverse(node *N) {
+    fils *F;
+    if (N->fils == NULL) {
+        std::cout << "hit a dead end.. moving up\n";
+    } else {
+        bool mod = true;
+        std::vector<int> leaves;
+        for (F = N->fils; F != NULL; F = F->suiv) {
+            if (F->pointe->type != LEAF) {
+                mod = false;
+                traverse(F->pointe);
+            } else
+                leaves.push_back(F->pointe->nom);
+        }
+
+        if (mod) {
+            cout << "found a module: {";
+            for (auto leaf: leaves)
+                cout << leaf << " ";
+            cout << "}\n";
+
+            // we need to process this portion of the graph
+
+            // generate contraction sequence, last node remaining
+            // is the new leaf
+            N->type = LEAF;
+            N->nom = leaves[0]; // this is just an example
+            // then remove this branch
+            N->fils = NULL;
+        }
+    }
+
 }
 
 int main(int argc, char** argv) {
@@ -113,7 +153,7 @@ int main(int argc, char** argv) {
     int C[4*NIV];
     int i;
 
-    int verbose = 1;
+    int verbose = 0;
     // appel de la fonction de decomposition
     auto R = decomposition_modulaire(G);
 
@@ -121,27 +161,13 @@ int main(int argc, char** argv) {
     if(verbose)
         printarbre(R);
 
-    auto edge_sets = vector<boost::dynamic_bitset<>>(G.n, boost::dynamic_bitset<>(G.n));
-    for (int i = 0; i < G.n; ++i) {
-        for (auto n = G.G[i]; n != NULL; n=n->suiv) {
-            edge_sets[i][n->s] = true;
-        }
-    }
+    for(i=0;i<4*NIV;i++) C[i]=0;
 
-    auto s = Sampler(edge_sets, 25, 5);
-    std::cout << "Inv Map " << s.inv_map->size() << " results.\n";
-    auto res = s.query(edge_sets[0]);
-    std::cout << "Returned " << res.size() << " results.\n";
+    compte(R,0, C);
 
-    int j = 0;
-    for (auto p : res) {
-        cout << "Distance: " << p.first << "\n";
-        j++;
-        if (j > 10)
-            break;
-    }
+    auto s = Solver();
+    auto sol = s.solve(G);
 
-    //compte(R,0,C);
     printf("Decomposition Tree Statistics:\n");
     if(C[0])
         printf("The root is Series\n");

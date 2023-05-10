@@ -21,19 +21,19 @@ public:
         parent = nullptr;
         children = vector<shared_node>();
         is_leaf = false;
-        content = make_unique(c);
+        content = c;
     }
 
     Node() {
         parent = nullptr;
         children = vector<shared_node>();
         is_leaf = false;
-        content = nullptr;
+        content = T();
     }
     shared_node parent;
     vector<shared_node> children;
     bool is_leaf;
-    unique_ptr<T> content;
+    T content;
 };
 
 template <typename T>
@@ -43,9 +43,16 @@ class Tree {
     int size = 0;
 
 public:
-    void insert(shared_node target, const shared_node& new_node) {
+    Tree() {
+        size = 0;
+        root = make_shared<Node<T>>(Node<T>());
+    }
+
+    shared_node get_root(){ return root; }
+
+    void insert(shared_node target, shared_node new_node) {
         target->children.push_back(new_node);
-        new_node->parent = std::move(target);
+        new_node->parent = target;
         new_node->is_leaf = true;
         size++;
     }
