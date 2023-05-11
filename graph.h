@@ -148,35 +148,24 @@ public:
         return degree;
     }
 
-    int compute_max_red_degree() {
-        int mrd = 0;
-        for (auto v : vertices()) {
-            auto rd = get_red_degree(v);
-            if (rd > mrd)
-                mrd = rd;
-        }
-        return mrd;
-    }
-
     int get_max_red_degree(){ return max_red_degree; }
 
     void contract(int a, int b) {
         // a is kept, b is thrown out
-        std::vector<int> set_diff;
+        std::set<int> set_diff;
         auto na = neighbors(a);
         auto nb = neighbors(b);
         std::set_symmetric_difference(na.begin(), na.end(),
-                                      nb.begin(), nb.end(), std::back_inserter(set_diff));
+                                      nb.begin(), nb.end(), std::inserter(set_diff, set_diff.begin()));
         //auto removed_vertex = adjacency_dict.at(b);
+
+        set_diff.erase(a);
+        set_diff.erase(b);
         int new_red_degree = set_diff.size();
         adjacency_dict.erase(b);
         for (auto vertex : set_diff) {
             adjacency_dict[a][vertex] = 2;
         }
-
-        bool extra_edge = adjacency_dict[a].find(a) != adjacency_dict[a].end();
-        if (extra_edge)
-            new_red_degree--;
 
         for (auto vertex : vertices()) {
             if (adjacency_dict.at(vertex).find(b) != adjacency_dict.at(vertex).end()) {
@@ -184,7 +173,6 @@ public:
             }
         }
 
-        adjacency_dict.at(a).erase(a);
         nnodes--;
         max_red_degree = std::max(max_red_degree, new_red_degree);
     }
