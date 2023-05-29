@@ -14,6 +14,7 @@ using namespace std;
 #include <chrono>
 #include <numeric>
 #include "mcts.h"
+#include "bfs_solver.h"
 
 using namespace std::chrono;
 
@@ -23,7 +24,7 @@ private:
     shared_ptr<Graph> G;
     vector<pair<int, int>> solution;
     int solve_module(const vector<int>& node_subset) {
-        //cout << "solving module of size: " << node_subset.size() << "\n";
+        //cout << " : " << node_subset.size() << " ";
 
         if (node_subset.size() == 2) {
             solution.emplace_back(node_subset[0], node_subset[1]);
@@ -32,12 +33,58 @@ private:
         }
 
         auto m = MonteCarloTreeSearch();
-        auto sub_g = G->subgraph(node_subset);
-        auto cs = m.solve(make_shared<Graph>(sub_g), node_subset);
-        solution.insert(solution.end(), cs.begin(), cs.end());
+
+        vector<pair<int, int>> cs;
+        if (G->order() == node_subset.size()) { // TODO: this doesn't quite work
+            cs = m.solve(G, node_subset);
+            solution.insert(solution.end(), cs.begin(), cs.end());
+        } else {
+            std::cout << "Extracting subgraph..";
+            auto sub_g = G->subgraph(node_subset);
+            std::cout << " [DONE]\n";
+            cs = m.solve(make_shared<Graph>(sub_g), node_subset);
+            solution.insert(solution.end(), cs.begin(), cs.end());
+        }
 
         for (auto contraction : cs)
             G->contract(contraction.first, contraction.second);
+
+        return cs.back().first;
+    }
+
+    int solve_module2(const set<int>& node_subset) {
+
+        if (node_subset.size() == 2) {
+            int n1 = *node_subset.begin();
+            auto n2 = node_subset.end();
+            n2--;
+            solution.emplace_back(n1, *n2);
+            G->contract(n1, *n2);
+            return solution.back().first;
+        }
+
+        auto m = BFSSolver();
+
+        vector<pair<int, int>> cs;
+        /*
+        if (G->order() == node_subset.size()) { // TODO: this doesn't quite work
+            cs = m.solve(G, node_subset);
+            solution.insert(solution.end(), cs.begin(), cs.end());
+        } else {
+            std::cout << "Extracting subgraph of size: " << node_subset.size() << " / " << G->order();
+            auto sub_g = G->subgraph(node_subset);
+            std::cout << " [DONE]\n";
+            cs = m.solve(make_shared<Graph>(sub_g));
+            solution.insert(solution.end(), cs.begin(), cs.end());
+
+            for (auto contraction : cs)
+                G->contract(contraction.first, contraction.second);
+            std::cout << "Graph size after: " << G->order() << "\n";
+        }
+         */
+        cs = m.solve(G, node_subset);
+        solution.insert(solution.end(), cs.begin(), cs.end());
+
 
         return cs.back().first;
     }
@@ -48,18 +95,19 @@ private:
             cout << "hit a dead end.. moving up\n";
         } else {
             bool mod = true;
-            std::vector<int> leaves;
+            std::set<int> leaves;
             for (F = N->fils; F != NULL; F = F->suiv) {
                 if (F->pointe->type != LEAF) {
                     mod = false;
                     traverse(F->pointe);
                 } else
-                    leaves.push_back(F->pointe->nom);
+                    leaves.insert(F->pointe->nom);
             }
 
             if (mod) {
                 // we need to process this portion of the graph
-                int remaining_node =  solve_module(leaves);
+                int remaining_node =  solve_module2(leaves);
+
                 // generate contraction sequence, last node remaining
                 // is the new leaf
                 N->type = LEAF;
@@ -93,9 +141,14 @@ public:
 
         int level = 0;
         while (R->type != LEAF) {
-            cout << "solving level " << level << "..\n";
+            start = high_resolution_clock::now();
+            cout << "solving level " << level << "..";
             traverse(R);
             level++;
+            stop = high_resolution_clock::now();
+            if (verbose) {
+                cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
+            }
         }
         std::cout << "Twinwidth: " << G->get_max_red_degree() << "\n";
         return solution;

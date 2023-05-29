@@ -146,6 +146,7 @@ private:
                 inv_map->at(g_ix).push_back(x);
             }
         }
+        std::cout << "Number of buckets: " << inv_map->size() << "\n";
     }
 
 
@@ -196,7 +197,6 @@ public:
 
 class Distribution {
 private:
-    map<pair<int, int>, vector<int>> symmetric_differences;
     vector<pair<int, int>> keys;
     vector<float> cdf;
     default_random_engine gen;
@@ -206,10 +206,11 @@ private:
     void get_sym_differences(const shared_ptr<Graph>& G, const vector<int>& node_subset) {
         //auto probs = vector<float>(pow((float)node_subset.size(), 2));
         keys = vector<pair<int,int>>(); // ((int) pow((float)node_subset.size(), 2));
-        symmetric_differences = map<pair<int, int>, vector<int>>();
+        symmetric_differences = map<pair<int, int>, set<int>>();
         int k = 0;
         for (int i = 0; i < node_subset.size() - 1; ++i) {
             for (int j = i + 1; j < node_subset.size(); ++j) {
+            //for (int j = 0; j < node_subset.size(); ++j) {
                 if (i == j)
                     continue;
                 int a = node_subset[i];
@@ -221,6 +222,27 @@ private:
                 k++;
             }
         }
+    }
+
+    void get_local_sym_differences(const shared_ptr<Graph>& G, const vector<int>& node_subset) {
+        std::cout << "computing sym diffs  ";
+        keys = vector<pair<int,int>>(); // ((int) pow((float)node_subset.size(), 2));
+        symmetric_differences = map<pair<int, int>, set<int>>();
+        set<int> subset(node_subset.begin(), node_subset.end());
+
+        for (auto n : subset) {
+            auto nbrs = G->neighbors(n);
+            set<int> intr{};
+            set_intersection(subset.begin(), subset.end(), nbrs.begin(), nbrs.end(), inserter(intr, intr.begin()));
+            for (auto n2 : intr) {
+                if (n2 <= n) //  TODO: make this faster
+                    continue;
+                symmetric_differences.insert({{n, n2}, G->sym_diff(n, n2)});
+                keys.emplace_back(n, n2);
+            }
+
+        }
+        std::cout << "[DONE]\n";
     }
 
     void make_distribution() {
@@ -244,7 +266,32 @@ private:
         }
     }
 
+    vector<float> make_distribution(const map<pair<int, int>, set<int>>& sd) {
+        auto probs = vector<float>(sd.size());
+        int k = 0;
+        for (const auto& p : sd) {
+            probs[k] = 1 / pow(max((float) p.second.size(), (float) 0.001), 1);
+            k++;
+        }
+
+        auto sum_prob = std::reduce(probs.begin(), probs.end());
+        for (float & prob : probs) {
+            prob /= sum_prob;
+        }
+
+        auto subset_cdf = vector<float>(probs.size());
+        float cumsum = 0.;
+        for (int i = 0; i < cdf.size(); ++i){
+            cumsum += probs[i];
+            subset_cdf[i] = cumsum;
+        }
+        return subset_cdf;
+    }
+
 public:
+
+    map<pair<int, int>, set<int>> symmetric_differences;
+
     Distribution(const shared_ptr<Graph>& G, const vector<int>& node_subset, int r=25, int c=5) {
         //auto edge_sets = vector<boost::dynamic_bitset<>>(G.order(), boost::dynamic_bitset<>(G.order()));
         //auto map_to_nodes = map<boost::dynamic_bitset<>, int>();
@@ -260,11 +307,95 @@ public:
 
         //auto s = Sampler(edge_sets, r, c);
         // We sample the nearest neighbors for each node and build the distribution
-        get_sym_differences(G, node_subset);
+        if (node_subset.size() > 100) {
+            get_local_sym_differences(G, node_subset);
+        } else {
+            get_sym_differences(G, node_subset);
+        }
+
         //make_distribution(G, node_subset);
 
 
     }
+
+
+    vector<pair<int, int>> sample_sequence(int size) {
+        std::cout << "Creating sequence..." << "\n";
+        make_distribution();
+        size = std::min(size, (int) cdf.size() - 1);
+        std::cout << "CDF: " << cdf.size() << "\n";
+        for (auto f : cdf)
+            std::cout << f << " ";
+        std::cout << "\n";
+
+        for (const auto& f : symmetric_differences)
+            std::cout << f.first.first << "," << f.first.second << " ";
+        std::cout << "\n";
+        set<int> removed{};
+        vector<pair<int, int>> s(size);
+        set<pair<int, int>> used;
+        int sampled = 0;
+        float sp;
+        while (sampled <= size) {
+            sp = distribution(gen);
+            int ind = std::distance(cdf.begin(), std::upper_bound(cdf.begin(), cdf.end(), sp));
+
+            auto sample = keys[ind];
+
+            if (removed.contains(sample.first) or removed.contains(sample.second))
+                continue;
+
+            if (used.contains(sample))
+                continue;
+
+            removed.insert(sample.second);
+            used.insert(sample);
+            s[sampled] = sample;
+            sampled++;
+        }
+        std::cout << "The samples sequence: " << s.size() << "\n";
+        for (auto c: s)
+            std::cout << c.first << "," << c.second << "\n";
+
+        return s;
+    }
+
+    vector<pair<int, int>> sample_sequence(int size, const vector<int>& subset) {
+        std::cout << "Creating sequence..." << "\n";
+        auto sd = map<pair<int, int>, set<int>>();
+        auto subset_cdf = make_distribution(sd);
+        size = std::min(size, (int) subset_cdf.size());
+
+        set<int> removed{};
+        vector<pair<int, int>> s(size);
+        set<pair<int, int>> used;
+        int sampled = 0;
+
+        auto sampled_probabilities = vector<float>(size);
+        for (float & sampled_probability : sampled_probabilities)
+            sampled_probability = distribution(gen);
+
+        while (sampled < size) {
+            auto sample = keys[std::distance(subset_cdf.begin(), std::lower_bound(subset_cdf.begin(), subset_cdf.end(), distribution(gen)))];
+            std::cout << "sampled: " << sample.first << "," << sample.second << "\n";
+            if (removed.contains(sample.first) or removed.contains(sample.second))
+                continue;
+
+            if (used.contains(sample))
+                continue;
+
+            removed.insert(sample.second);
+            used.insert(sample);
+            s[sampled] = sample;
+            sampled++;
+        }
+        std::cout << "The samples sequence:\n";
+        for (auto c: s)
+            std::cout << c.first << "," << c.second << "\n";
+
+        return s;
+    }
+
     vector<pair<int, int>> sample(int sample_size=1, bool remove_samples=true) {
         make_distribution();
 
@@ -291,10 +422,6 @@ public:
         if (remove_samples)
             remove(moves);
 
-        std::cout << "generated moves: ";
-        for (auto m: moves)
-            std::cout << m.first << "," << m.second << " ; ";
-        std::cout << "\n";
         return moves;
     }
 

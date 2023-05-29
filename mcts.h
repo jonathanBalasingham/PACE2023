@@ -72,6 +72,46 @@ private:
     }
 
 
+    void exact_expand(std::shared_ptr<Node<ContractionPair>> n, const vector<int>& subset,
+                const std::string& method="setdiff") {
+        //dist->remove(contraction_sequence);
+        auto moves = dist->sample(num_candidates, false);
+
+        for (auto move: moves) {
+            auto new_node = Node<ContractionPair>(move);
+            tree->insert(n, make_shared<Node<ContractionPair>>(new_node));
+        }
+
+        vector<float> scores;
+        int selected_child = -1;
+        float best_score;
+        auto current_graph = *G;
+
+        if (current_graph.order() == 2) {
+            contraction_sequence.emplace_back(current_graph.vertices()[0], current_graph.vertices()[1]);
+            return;
+        }
+
+        auto rd = (float) current_graph.get_max_red_degree();
+
+        for (int i = 0; i < n->children.size(); ++i) {
+            scores.push_back(rd - simulate(current_graph, n->children[i]));
+            if (selected_child == -1) {
+                selected_child = i;
+                best_score = scores.back();
+            } else {
+                if (scores.back() > best_score)
+                    selected_child = i;
+            }
+        }
+        dist->remove({moves[selected_child]});
+        solution_path.push_back(selected_child);
+        contraction_sequence.push_back(moves[selected_child]);
+        G->contract(moves[selected_child].first, moves[selected_child].second);
+    }
+
+
+
 public:
     MonteCarloTreeSearch(int candidate_nodes=5, int simulation_depth=3, int num_simulations=1) {
         num_candidates = candidate_nodes;
@@ -100,50 +140,43 @@ public:
 
     void expand(std::shared_ptr<Node<ContractionPair>> n, const vector<int>& subset,
                 const std::string& method="setdiff") {
-        dist->remove(contraction_sequence);
-        auto moves = dist->sample(num_candidates, false);
 
-        for (auto move: moves) {
-            auto new_node = Node<ContractionPair>(move);
-            tree->insert(n, make_shared<Node<ContractionPair>>(new_node));
+        vector<pair<int, int >> moves(num_candidates);
+        vector<float> scores(num_candidates);
+        int chosen_child;
+        float mrd = (float) G->get_max_red_degree();
+        for (int i = 0; i < num_candidates; ++i) {
+            auto cs = dist->sample_sequence(sim_depth);
+            moves[i] = cs[0];
+            auto score = G->simulate_contractions(cs);
+            scores[i] = (float) mrd - score;
         }
 
-        vector<float> scores;
-        int selected_child = -1;
-        float best_score;
-        auto current_graph = get_graph(*G);
-
-        if (current_graph.order() == 2) {
-            contraction_sequence.emplace_back(current_graph.vertices()[0], current_graph.vertices()[1]);
-            return;
-        }
-
-        auto rd = (float) current_graph.get_max_red_degree();
-
-        for (int i = 0; i < n->children.size(); ++i) {
-            scores.push_back(rd - simulate(current_graph, n->children[i]));
-            if (selected_child == -1) {
-                selected_child = i;
-                best_score = scores.back();
-            } else {
-                if (scores.back() > best_score)
-                    selected_child = i;
-            }
-        }
-        dist->remove({moves[selected_child]});
-        solution_path.push_back(selected_child);
-        contraction_sequence.push_back(moves[selected_child]);
+        chosen_child = std::distance(scores.begin(), std::min_element(scores.begin(), scores.end()));
+        contraction_sequence.push_back(moves[chosen_child]);
+        dist->remove({moves[chosen_child]});
+        G->contract(moves[chosen_child].first, moves[chosen_child].second);
+        std::cout << "Graph size down to " << G->order() << "\n";
+        std::cout << "Moves left: " << dist->symmetric_differences.size() << "\n";
     }
 
     std::vector<std::pair<int,int>> solve(const shared_ptr<Graph>& g, const vector<int>& subset,
                                           const std::string& method="setdiff") {
         G = g;
         int depth = 0;
+        std::cout << "solving subgraph of size " << subset.size() << "\n";
+
+
         dist = make_unique<Distribution>(Distribution(g, subset));
         auto n = tree->get_root();
         // collapsing twins is not necessary when using the distribution
-        while (depth + 1 < subset.size()) {
-            expand(n, subset, method);
+        while (G->order() > 1) {
+            std::cout << "\r" << " tree depth: " << depth;
+            if (G->order() < 10) {
+                exact_expand(n, subset, method);
+            } else {
+                expand(n, subset, method);
+            }
             n = traverse_path(solution_path);
             depth++;
         }

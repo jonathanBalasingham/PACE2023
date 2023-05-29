@@ -2,6 +2,8 @@
 #include <vector>
 #include <fstream>
 #include "solver.h"
+#include "quick_solver.h"
+#include "graph_v2.h"
 
 
 std::vector<std::string> split(const std::string& s, const std::string& delimiter) {
@@ -31,6 +33,25 @@ void add_edge(graph G, int i, int j, int verbose=0) {
     G.G[j]=a;
     if(verbose)
         printf("%i ",j);
+}
+
+std::vector<std::pair<int, int>> read_tww(const std::string& file) {
+    std::ifstream f(file);
+    auto cs = std::vector<std::pair<int, int>>();
+    std::string line;
+
+    if (f.is_open()) {
+        while (std::getline(f, line)) {
+            if (!line.empty()) {
+                auto vertices_involved = split(line, " ");
+                auto n1 = stoi(vertices_involved[0]) - 1;
+                auto n2 = stoi(vertices_involved[1]) - 1;
+                cs.emplace_back(n1, n2);
+            }
+        }
+        f.close();
+    }
+    return cs;
 }
 
 
@@ -165,8 +186,21 @@ int main(int argc, char** argv) {
 
     compte(R,0, C);
 
-    auto s = Solver();
-    auto sol = s.solve(G);
+    //auto s = Solver();
+    //auto sol = s.solve(G);
+
+    auto start = high_resolution_clock::now();
+    auto g = BitsetGraph(G);
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<seconds>(stop - start);
+    std::cout << "Creation took " << duration.count() << " seconds\n";
+    vector<pair<int, int>> sds;
+    start = high_resolution_clock::now();
+    g.bfs_solve();
+    stop = high_resolution_clock::now();
+    duration = duration_cast<seconds>(stop - start);
+    std::cout << "Comparisons took " << duration.count() << " seconds\n";
+
 
     printf("Decomposition Tree Statistics:\n");
     if(C[0])

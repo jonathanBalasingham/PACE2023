@@ -14,6 +14,33 @@
 
 using AdjacencyDict = std::map<int, std::map<int, int>>;
 
+struct cmp {
+    bool operator()(int i, const std::pair<int, int>& p) const
+    {
+        return i < p.first;
+    }
+
+    bool operator()(const std::pair<int, int>& p, int i) const
+    {
+        return p.first < i;
+    }
+
+    bool operator()(int k, int i) const
+    {
+        return k < i;
+    }
+
+    bool operator()(const std::pair<int, int>& p, const std::pair<int, int>& p2) const
+    {
+        return p.first < p2.first;
+    }
+
+};
+
+bool cmp2(const std::pair<int, int>& p, const std::pair<int, int>& p2) {
+    return p.first < p2.first;
+}
+
 class Graph {
 private:
     int nedges;
@@ -95,6 +122,16 @@ public:
         return v;
     }
 
+    std::set<int> vertices_as_set() {
+        auto kv = std::views::keys(adjacency_dict);
+        std::set<int> v{ kv.begin(), kv.end() };
+        return v;
+    }
+
+    int first() {
+        return adjacency_dict.begin()->first;
+    }
+
     std::set<int> neighbors(int n) {
         if (has_node(n)) {
             auto d = adjacency_dict.at(n);
@@ -106,6 +143,14 @@ public:
             std::cout << n;
             throw std::runtime_error("Node not found in graph" );
         }
+    }
+
+    std::shared_ptr<std::map<int, int>> neighbors_at(int n) {
+        return std::make_shared<std::map<int, int>>(adjacency_dict.at(n));
+    }
+
+    void set_max_red_degree(int i) {
+        max_red_degree = std::max(i, max_red_degree);
     }
 
     void add_neighbors(int n, const std::set<int>& vs) {
@@ -152,12 +197,9 @@ public:
 
     void contract(int a, int b) {
         // a is kept, b is thrown out
-        std::set<int> set_diff;
-        auto na = neighbors(a);
-        auto nb = neighbors(b);
-        std::set_symmetric_difference(na.begin(), na.end(),
-                                      nb.begin(), nb.end(), std::inserter(set_diff, set_diff.begin()));
-        //auto removed_vertex = adjacency_dict.at(b);
+        const map<int, int>* na = &adjacency_dict.at(a);
+        const map<int, int>* nb = &adjacency_dict.at(b);
+        auto set_diff = sym_diff(*na, *nb);
 
         set_diff.erase(a);
         set_diff.erase(b);
@@ -178,31 +220,114 @@ public:
     }
 
     int red_degree_after_contraction(int a, int b) {
-        std::vector<int> set_diff;
+        const map<int, int>* na = &adjacency_dict.at(a);
+        const map<int, int>* nb = &adjacency_dict.at(b);
+        auto set_diff = sym_diff(*na, *nb);
+
+        set_diff.erase(a);
+        set_diff.erase(b);
+        return std::max(max_red_degree, (int) set_diff.size());
+    }
+
+    set<int> sym_diff(int a, int b) {
+        std::set<int> set_diff;
         auto na = neighbors(a);
         auto nb = neighbors(b);
         std::set_symmetric_difference(na.begin(), na.end(),
-                                      nb.begin(), nb.end(), std::back_inserter(set_diff));
-        int rd = set_diff.size();
-        bool extra_edge = adjacency_dict[a].find(a) != adjacency_dict[a].end();
-        if (extra_edge)
-            rd--;
-
-        return std::max(max_red_degree, rd);
+                                      nb.begin(), nb.end(), std::inserter(set_diff, set_diff.begin()));
+        set_diff.erase(a);
+        set_diff.erase(b);
+        return set_diff;
     }
 
-    int simulate_contractions() {
-
+    set<int> sym_diff(const set<int>& na, const set<int>& nb) {
+        std::set<int> set_diff;
+        std::set_symmetric_difference(na.begin(), na.end(),
+                                      nb.begin(), nb.end(), std::inserter(set_diff, set_diff.begin()));
+        return set_diff;
     }
 
-    std::vector<int> sym_diff(int a, int b) {
-        auto na = neighbors(a);
-        auto nb = neighbors(b);
-        std::vector<int> sd;
-        std::set_symmetric_difference(na.begin(), na.end(), nb.begin(),
-                                      nb.end(), std::back_inserter(sd));
-        return sd;
+    set<int> sym_diff(const set<int>& na, const map<int, int>& nb) {
+        std::set<int> set_diff;
+        for (auto n: na) {
+            if (!nb.contains(n))
+                set_diff.insert(n);
+        }
+
+        for (auto n: nb) {
+            if (!na.contains(n.first))
+                set_diff.insert(n.first);
+        }
+
+        return set_diff;
     }
+
+    set<int> sym_diff(const map<int, int>& na, const map<int, int>& nb) {
+        std::set<int> set_diff;
+        for (auto n: na) {
+            if (!nb.contains(n.first))
+                set_diff.insert(n.first);
+        }
+
+        for (auto n: nb) {
+            if (!na.contains(n.first))
+                set_diff.insert(n.first);
+        }
+
+        return set_diff;
+    }
+
+    float simulate_contractions(const vector<pair<int, int>>& cs) {
+        auto modified_vertices = map<int, map<int, int>>(); // this will hold the new neighbors
+        map<int, int>* n1;
+        map<int, int>* n2;
+        vector<int> red_degrees{};
+        float total_degree = 0;
+
+        for (auto c: cs) {
+            if (!modified_vertices.contains(c.first)) {
+                modified_vertices.insert({c.first, adjacency_dict.at(c.first)});
+            }
+        }
+
+        set<int> sd;
+        for (auto c: cs) {
+            //std::cout << "Working on " << c.first << "," << c.second << "\n";
+            n1 = &modified_vertices.at(c.first);
+            if (modified_vertices.contains(c.second))
+                n2 = &modified_vertices.at(c.second);
+            else
+                n2 = &adjacency_dict.at(c.second);
+
+            // by modifying n1, we've modified all n2's neighbors
+            // they need to be added to modified_vertices
+            sd = sym_diff(*n1, *n2);
+            sd.erase(c.first);
+            sd.erase(c.second);
+            red_degrees.push_back((int) sd.size());
+            total_degree += (float) sd.size();
+            //std::cout << "Adding the neighbors of " << c.second << " to " << c.first << ": ";
+            for (auto edge : sd) {
+                std::cout << edge << " ";
+                n1->insert({edge, 2}); // transfer the red edges to the kept node
+            }
+            //std::cout << "\n";
+            auto n2_copy = *n2;
+            for (auto n : n2_copy) {
+                if (modified_vertices.contains(n.first)) {
+                    modified_vertices.at(n.first).erase(c.second);
+                    modified_vertices.at(n.first).insert({c.first, 2});
+                    continue;
+                }
+                auto n_neighbors = adjacency_dict.at(n.first);
+                n_neighbors.erase(c.second);
+                n_neighbors.insert({c.first, 2}); // can i just swap keys
+                modified_vertices.insert({n.first, n_neighbors});
+            }
+        }
+        return total_degree / (float) cs.size();
+    }
+
 
 };
 
