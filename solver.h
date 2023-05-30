@@ -24,7 +24,6 @@ private:
     shared_ptr<Graph> G;
     vector<pair<int, int>> solution;
     int solve_module(const vector<int>& node_subset) {
-        //cout << " : " << node_subset.size() << " ";
 
         if (node_subset.size() == 2) {
             solution.emplace_back(node_subset[0], node_subset[1]);

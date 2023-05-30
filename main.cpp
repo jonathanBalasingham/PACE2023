@@ -1,10 +1,11 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include "solver.h"
+#include "bitset_solver.h"
 #include "quick_solver.h"
-#include "graph_v2.h"
-
+#include "bfs_solver.h"
+//#include "graph_v2.h"
+#include <csignal>
 
 std::vector<std::string> split(const std::string& s, const std::string& delimiter) {
     size_t pos_start = 0, pos_end, delim_len = delimiter.length();
@@ -26,32 +27,12 @@ void add_edge(graph G, int i, int j, int verbose=0) {
     a->s=j;
     a->suiv=G.G[i];
     G.G[i]=a;
-    // et reciproquement
     a=(adj *)malloc(sizeof(adj));
     a->s=i;
     a->suiv=G.G[j];
     G.G[j]=a;
     if(verbose)
         printf("%i ",j);
-}
-
-std::vector<std::pair<int, int>> read_tww(const std::string& file) {
-    std::ifstream f(file);
-    auto cs = std::vector<std::pair<int, int>>();
-    std::string line;
-
-    if (f.is_open()) {
-        while (std::getline(f, line)) {
-            if (!line.empty()) {
-                auto vertices_involved = split(line, " ");
-                auto n1 = stoi(vertices_involved[0]) - 1;
-                auto n2 = stoi(vertices_involved[1]) - 1;
-                cs.emplace_back(n1, n2);
-            }
-        }
-        f.close();
-    }
-    return cs;
 }
 
 
@@ -77,6 +58,7 @@ graph from_file(const std::string& file, int verbose) {
         printf("%d nodes, %d edges\n", n, nedges);
 
         G.n=n;
+        G.e=nedges;
         G.G=(adj **)malloc(n*sizeof(adj *));
 
         for(i=0;i<n;i++)
@@ -150,10 +132,6 @@ void traverse(node *N) {
                 cout << leaf << " ";
             cout << "}\n";
 
-            // we need to process this portion of the graph
-
-            // generate contraction sequence, last node remaining
-            // is the new leaf
             N->type = LEAF;
             N->nom = leaves[0]; // this is just an example
             // then remove this branch
@@ -163,59 +141,86 @@ void traverse(node *N) {
 
 }
 
+using namespace roaring;
+
+void write_default_solution(std::string filename, graph G) {
+    ofstream f(filename);
+    if(f.is_open()) {
+        for (int i = 1; i < G.n; ++i) {
+            f << i + 1 << " " << i << "\n";
+        }
+        f.close();
+    }
+}
+
+void write_contraction_sequence(std::string filename, std::vector<std::pair<int, int>> cs) {
+    ofstream f(filename);
+    if(f.is_open()) {
+        for (auto& c : cs) {
+            f << c.first + 1 << " " << c.second + 1 << "\n";
+        }
+        f.close();
+    }
+}
+
+Solver s;
+std::string filename = "results.tww";
+
+vector<pair<int, int>> finish_sequence() {
+    std::cout << "getting remaining nodes..";
+    auto nodes_left = s.get_graph()->get_nodes();
+    std::cout << "Retrieving current solution...\n";
+    auto unfinished = s.get_graph()->get_solution();
+    std::cout << "Getting unfinished solution...\n";
+    auto cs = s.get_solution();
+    std::cout << "Combining..\n";
+    cs.insert(cs.end(), unfinished.begin(), unfinished.end());
+    int i = 0;
+    int start_node;
+    for (auto n : nodes_left) {
+        if (i == 0) {
+            start_node = n;
+            i++;
+            continue;
+        }
+        cs.emplace_back(start_node, n);
+        i++;
+    }
+    return cs;
+}
+
+void handle_sigint( int signum ) {
+    std::cout << "wrapping up...\n";
+    auto cs = finish_sequence();
+    write_contraction_sequence(filename, cs);
+    exit(signum);
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cout << "No input file provided. Exiting...\n";
         exit(1);
     }
 
-    auto NIV = 20;
+    signal(SIGINT, handle_sigint);
+
+    bool sparse = false;
+    bool large = false;
+
     auto G = from_file(argv[1], 0);
-    int C[4*NIV];
-    int i;
+    write_default_solution(filename, G);
 
-    int verbose = 0;
-    // appel de la fonction de decomposition
-    auto R = decomposition_modulaire(G);
+    float con = ((float) G.e) / (float) pow(G.n, 2);
+    float epn = ((float) G.e) / ((float) G.n);
 
-    // affichage de l'arbre
-    if(verbose)
-        printarbre(R);
+    std::string method;
+    large = G.n > 120000;
 
-    for(i=0;i<4*NIV;i++) C[i]=0;
+    if (large)
+        method = "roaring";
 
-    compte(R,0, C);
-
-    //auto s = Solver();
-    //auto sol = s.solve(G);
-
-    auto start = high_resolution_clock::now();
-    auto g = BitsetGraph(G);
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<seconds>(stop - start);
-    std::cout << "Creation took " << duration.count() << " seconds\n";
-    vector<pair<int, int>> sds;
-    start = high_resolution_clock::now();
-    g.bfs_solve();
-    stop = high_resolution_clock::now();
-    duration = duration_cast<seconds>(stop - start);
-    std::cout << "Comparisons took " << duration.count() << " seconds\n";
-
-
-    printf("Decomposition Tree Statistics:\n");
-    if(C[0])
-        printf("The root is Series\n");
-    else if(C[1])
-        printf("The root is Parallel\n");
-    else
-        printf("The root is Prime \n");
-    for(i=1 ; i<NIV ; i++) {
-        printf("Level %i: %i modules (S-P-Pr= %i - %i - %i) and %i leaves\n",i,
-               C[4*i]+C[4*i+1]+C[4*i+2], C[4*i], C[4*i+1], C[4*i+2],C[4*i+3]);
-        if(i<NIV-1 && C[4*i+4]+C[4*i+5]+C[4*i+6]+C[4*i+7]==0)
-            break;
-    }
-    printf("\n");
-
+    s = Solver();
+    auto sol = s.solve(G, true, "roaring");
+    write_contraction_sequence(filename, sol);
     return 0;
 }

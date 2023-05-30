@@ -60,6 +60,7 @@ typedef struct Adj {
 
 typedef struct {
   int n; //number of vertices of the graph
+  int e;
   adj **G; // array of size n. G[i] points the first pair of the adjacency list of vertex i
 
 } graph;
