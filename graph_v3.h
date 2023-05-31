@@ -135,12 +135,12 @@ public:
 
         //std::cout << "Candidates: " << candidates << "\n";
         //std::cout << "Limit: " << limit << "\n";
-        inner_bfs_solve(starting_node, node_subset, candidates, limit);
+        //inner_bfs_solve(starting_node, node_subset, candidates, limit);
+        inner_bfs_solve2(starting_node, node_subset);
         return solution;
     }
 
     void inner_bfs_solve(int node, Roaring& node_subset, int candidates=100, int limit=INT32_MAX) {
-
         do {
             auto results = sym_diff_of_neighbors(node, node_subset, limit);
 
@@ -170,14 +170,15 @@ public:
     }
 
 
-    void inner_bfs_solve2(vector<pair<int, int>>& sol, int node, Roaring& node_subset, int candidates=100, int limit=INT32_MAX) {
+    void inner_bfs_solve2(int node, Roaring& node_subset, int limit=INT32_MAX) {
+        Roaring cache = {};
         auto results = vector<pair<int, int>>();
         pair<int, int> p;
         int sd;
         const Roaring& n = edges[node] & node_subset;
 
         for (const auto nid: n) {
-            sd = ((n ^ edges[nid])).cardinality() - 2;
+            sd = (n ^ edges[nid]).cardinality() - 2;
             p = {nid, sd};
             if (results.empty()) {
                 results.push_back(p);
@@ -186,55 +187,54 @@ public:
             auto lb = lower_bound(results.begin(), results.end(), p,
                                   [&](pair<int, int> a, pair<int, int> b) { return a.second < b.second; });
             results.insert(lb, p);
-            if (results.size() >= limit)
-                break;
+            cache.add(nid);
         }
 
         do {
             if (results.empty()) {
                 int i = find_best_node(node, node_subset, limit);
-                auto neighbors = edges[i];
-                neighbors.remove(node);
-
                 contract(i, node);
                 node_subset.remove(node);
-                sol.emplace_back(i, node);
+                solution.emplace_back(i, node);
                 node = i;
+                cache = {};
+                auto neighbors = edges[node] & node_subset;
+                for (auto nid : neighbors) {
+                    sd = ((n ^ edges[nid])).cardinality() - 2;
+                    p = {nid, sd};
+                    if (results.empty()) {
+                        results.push_back(p);
+                        continue;
+                    }
+                    auto lb = lower_bound(results.begin(), results.end(), p,
+                                          [&](pair<int, int> a, pair<int, int> b) { return a.second < b.second; });
+                    results.insert(lb, p);
+                    cache.add(nid);
+                }
+
             } else {
                 p = results[0];
+                results.erase(results.begin());
+		if (not node_subset.contains(p.first)){
+		    continue;
+		}
                 contract(node, p.first);
                 node_subset.remove(p.first);
-                sol.emplace_back(node, p.first);
+                solution.emplace_back(node, p.first);
+                auto neighbors = (edges[node] - cache) & node_subset;
+
+                for (auto nid : neighbors) {
+                    sd = (n ^ edges[nid]).cardinality() - 2;
+                    p = {nid, sd};
+                    auto lb = lower_bound(results.begin(), results.end(), p,
+                                          [&](pair<int, int> a, pair<int, int> b) { return a.second < b.second; });
+                    results.insert(lb, p);
+                    cache.add(nid);
+                }
             }
-
-            if (node_subset.cardinality() <= 1)
-                return;
-
-
-            if (node_subset.cardinality() > 1) {
-
-                std::cout << "\r" << "Graph size: " << order();
-            } else return;
+	    if (order() % 10 == 0)
+            	std::cout << "\r" << "Graph size: " << order();
         } while (node_subset.cardinality() > 1);
-    }
-
-    void update_results(vector<pair<int, int>>& results, int current_node, int node, const Roaring& node_subset) {
-        auto n = (edges[node] & node_subset);
-        int sd;
-        pair<int, int> p;
-        for (const auto nid: n) {
-            sd = ((n ^ edges[nid])).cardinality() - 2;
-            p = {nid, sd};
-            if (results.empty()) {
-                results.push_back(p);
-                continue;
-            }
-            auto lb = lower_bound(results.begin(), results.end(), p,
-                                  [&](pair<int, int> a, pair<int, int> b) { return a.second < b.second; });
-            if (lb->second == nid)
-                continue;
-            results.insert(lb, p);
-        }
     }
 
 };

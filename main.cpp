@@ -125,9 +125,12 @@ vector<pair<int, int>> finish_sequence() {
     std::cout << "Retrieving current solution...\n";
     auto unfinished = s.get_graph()->get_solution();
     std::cout << "Getting unfinished solution...\n";
+    std::cout << "Unfinished size: " << unfinished.size() << "\n";
     auto cs = s.get_solution();
     std::cout << "Combining..\n";
+    std::cout << "Current solution size: " << cs.size() << "\n";
     cs.insert(cs.end(), unfinished.begin(), unfinished.end());
+    std::cout << "Total completed contractions: " << cs.size() << "\n";
     int i = 0;
     int start_node;
     for (auto n : nodes_left) {
