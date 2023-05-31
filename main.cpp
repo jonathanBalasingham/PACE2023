@@ -157,9 +157,6 @@ int main(int argc, char** argv) {
 
     signal(SIGINT, handle_sigint);
 
-    bool sparse = false;
-    bool large = false;
-
     auto G = from_file(argv[1], 0);
     std::string fn = std::string(argv[1]).substr(std::string(argv[1]).find_last_of("/\\") + 1);
     filename = split(fn, ".")[0] + ".tww";
@@ -167,12 +164,6 @@ int main(int argc, char** argv) {
 
     float con = ((float) G.e) / (float) pow(G.n, 2);
     float epn = ((float) G.e) / ((float) G.n);
-
-    std::string method;
-    large = G.n > 120000;
-
-    if (large)
-        method = "roaring";
 
     s = Solver();
     auto sol = s.solve(G, true, "roaring");
