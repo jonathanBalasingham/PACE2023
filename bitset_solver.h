@@ -110,12 +110,12 @@ public:
         int level = 0;
         while (R->type != LEAF) {
             start = high_resolution_clock::now();
-            cout << "solving level " << level << "..";
+            //cout << "solving level " << level << "..";
             traverse(R);
             level++;
             stop = high_resolution_clock::now();
             if (verbose) {
-                cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
+                //cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
             }
         }
 

@@ -91,55 +91,8 @@ graph from_file(const std::string& file, int verbose) {
 }
 
 
-void compte(node *N, int level, int *C) {
-    fils *F;
-    switch(N->type)
-    {
-        case SERIES: C[4 * level]++; break;
-        case PARALLEL: C[4 * level + 1]++; break;
-        case PRIME: C[4 * level + 2]++; break;
-        case LEAF: C[4 * level + 3]++; break;
-    }
-    if(N->type != LEAF)
-        for(F=N->fils;F!=NULL;F=F->suiv)
-            compte(F->pointe, level+1, C);
-}
 
 
-/*
- * The idea is to run this function on the MDTree repeatedly
- * and on each iteration, remove modules (portion of tree with leaves only).
- * On each application the tree will be pruned.
- * */
-void traverse(node *N) {
-    fils *F;
-    if (N->fils == NULL) {
-        std::cout << "hit a dead end.. moving up\n";
-    } else {
-        bool mod = true;
-        std::vector<int> leaves;
-        for (F = N->fils; F != NULL; F = F->suiv) {
-            if (F->pointe->type != LEAF) {
-                mod = false;
-                traverse(F->pointe);
-            } else
-                leaves.push_back(F->pointe->nom);
-        }
-
-        if (mod) {
-            cout << "found a module: {";
-            for (auto leaf: leaves)
-                cout << leaf << " ";
-            cout << "}\n";
-
-            N->type = LEAF;
-            N->nom = leaves[0]; // this is just an example
-            // then remove this branch
-            N->fils = NULL;
-        }
-    }
-
-}
 
 using namespace roaring;
 
@@ -208,6 +161,8 @@ int main(int argc, char** argv) {
     bool large = false;
 
     auto G = from_file(argv[1], 0);
+    std::string fn = std::string(argv[1]).substr(std::string(argv[1]).find_last_of("/\\") + 1);
+    filename = split(fn, ".")[0] + ".tww";
     write_default_solution(filename, G);
 
     float con = ((float) G.e) / (float) pow(G.n, 2);

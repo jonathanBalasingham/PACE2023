@@ -133,8 +133,8 @@ public:
         candidates = (int) floor(.001 * node_subset.cardinality()) + 1;
         limit  = candidates * 10 + 10;
 
-        std::cout << "Candidates: " << candidates << "\n";
-        std::cout << "Limit: " << limit << "\n";
+        //std::cout << "Candidates: " << candidates << "\n";
+        //std::cout << "Limit: " << limit << "\n";
         inner_bfs_solve(starting_node, node_subset, candidates, limit);
         return solution;
     }
@@ -164,7 +164,7 @@ public:
                     solution.emplace_back(i, node);
                     node = i;
                 }
-                std::cout << "\r" << "Graph size: " << order();
+                //std::cout << "\r" << "Graph size: " << order();
             } else return;
         } while (node_subset.cardinality() > 1);
     }
