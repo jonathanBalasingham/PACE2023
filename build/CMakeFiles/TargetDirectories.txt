@@ -1,0 +1,3 @@
+/home/jonathan/CLionProjects/PACE/build/CMakeFiles/PACE.dir
+/home/jonathan/CLionProjects/PACE/build/CMakeFiles/edit_cache.dir
+/home/jonathan/CLionProjects/PACE/build/CMakeFiles/rebuild_cache.dir
