@@ -170,7 +170,7 @@ public:
     }
 
 
-    void inner_bfs_solve2(int node, Roaring& node_subset, int limit=INT32_MAX) {
+    void inner_bfs_solve2(int node, Roaring& node_subset, int limit=1000) {
         Roaring cache = {};
         auto results = vector<pair<int, int>>();
         pair<int, int> p;
@@ -232,8 +232,6 @@ public:
                     cache.add(nid);
                 }
             }
-	    if (order() % 10 == 0)
-            	std::cout << "\r" << "Graph size: " << order();
         } while (node_subset.cardinality() > 1);
     }
 

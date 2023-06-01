@@ -52,7 +52,7 @@ private:
     void traverse(node *N) {
         fils *F;
         if (N->fils == NULL) {
-            cout << "hit a dead end.. moving up\n";
+            //cout << "hit a dead end.. moving up\n";
         } else {
             bool mod = true;
             std::set<int> leaves;
@@ -65,14 +65,9 @@ private:
             }
 
             if (mod) {
-                // we need to process this portion of the graph
                 int remaining_node =  solve_module(leaves);
-
-                // generate contraction sequence, last node remaining
-                // is the new leaf
                 N->type = LEAF;
-                N->nom = remaining_node; // this is just an example
-                // then remove this branch
+                N->nom = remaining_node;
                 N->fils = NULL;
             }
         }
@@ -94,50 +89,24 @@ public:
             solve_module(node_subset);
 
         } else {
-            if (verbose)
-                cout << "running modular decomposition..";
-            auto start = high_resolution_clock::now();
             auto R = decomposition_modulaire(g);
-            auto stop = high_resolution_clock::now();
-            auto duration = duration_cast<seconds>(stop - start);
 
             method = m;
-            if (verbose) {
-                cout << "[DONE] - " << duration.count() << " seconds \n";
-                cout << "Making c++ graph..";
-            }
-            start = high_resolution_clock::now();
+
             if (method == "roaring") {
                 G_r = make_shared<RoaringGraph>(RoaringGraph(g));
             } else {
                 G_b = make_shared<BitsetGraph>(BitsetGraph(g));
             }
 
-            stop = high_resolution_clock::now();
-            if (verbose) {
-                cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
-            }
             solution = {};
 
             int level = 0;
             while (R->type != LEAF) {
-                start = high_resolution_clock::now();
-                //cout << "solving level " << level << "..";
                 traverse(R);
                 level++;
-                stop = high_resolution_clock::now();
-                if (verbose) {
-                    //cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
-                }
             }
         }
-
-
-        std::cout << "Size of solution: " << solution.size() << "\n";
-        if (method == "roaring")
-            std::cout << "Twinwidth: " << G_r->get_max_red_degree() << "\n";
-        else
-            std::cout << "Twinwidth: " << G_b->get_max_red_degree() << "\n";
         return solution;
     }
 };
