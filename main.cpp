@@ -169,7 +169,7 @@ int main(int argc, char** argv) {
     float epn = ((float) G.e) / ((float) G.n);
 
     s = Solver();
-    auto sol = s.solve(G, true, "roaring");
+    auto sol = s.solve(G, true, "roaring", G.n > 150000);
     write_contraction_sequence(filename, sol);
     return 0;
 }

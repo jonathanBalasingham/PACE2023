@@ -215,9 +215,9 @@ public:
             } else {
                 p = results[0];
                 results.erase(results.begin());
-		if (not node_subset.contains(p.first)){
-		    continue;
-		}
+                if (not node_subset.contains(p.first)){
+                    continue;
+                }
                 contract(node, p.first);
                 node_subset.remove(p.first);
                 solution.emplace_back(node, p.first);

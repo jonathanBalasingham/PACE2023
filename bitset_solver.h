@@ -82,42 +82,56 @@ public:
     shared_ptr<RoaringGraph> get_graph(){ return G_r; }
     vector<pair<int, int>> get_solution() { return solution; }
 
-    vector<pair<int, int>> solve(graph g, bool verbose=true, const std::string& m="roaring") {
-        if (verbose)
-            cout << "running modular decomposition..";
-        auto start = high_resolution_clock::now();
-        auto R = decomposition_modulaire(g);
-        auto stop = high_resolution_clock::now();
-        auto duration = duration_cast<seconds>(stop - start);
-        method = m;
-        if (verbose) {
-            cout << "[DONE] - " << duration.count() << " seconds \n";
-            cout << "Making c++ graph..";
-        }
-        start = high_resolution_clock::now();
-        if (method == "roaring") {
-            G_r = make_shared<RoaringGraph>(RoaringGraph(g));
+    vector<pair<int, int>> solve(graph g, bool verbose=true, const std::string& m="roaring", bool skip_md=false) {
+        if (skip_md) {
+	    method = m;
+            set<int> node_subset = {};
+            for (int i = 0; i < g.n; ++i) {
+                node_subset.insert(i);
+            }
+	    solution = {};
+	    G_r = make_shared<RoaringGraph>(RoaringGraph(g));
+            solve_module(node_subset);
+
         } else {
-            G_b = make_shared<BitsetGraph>(BitsetGraph(g));
-        }
+            if (verbose)
+                cout << "running modular decomposition..";
+            auto start = high_resolution_clock::now();
+            auto R = decomposition_modulaire(g);
+            auto stop = high_resolution_clock::now();
+            auto duration = duration_cast<seconds>(stop - start);
 
-        stop = high_resolution_clock::now();
-        if (verbose) {
-            cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
-        }
-        solution = {};
-
-        int level = 0;
-        while (R->type != LEAF) {
+            method = m;
+            if (verbose) {
+                cout << "[DONE] - " << duration.count() << " seconds \n";
+                cout << "Making c++ graph..";
+            }
             start = high_resolution_clock::now();
-            //cout << "solving level " << level << "..";
-            traverse(R);
-            level++;
+            if (method == "roaring") {
+                G_r = make_shared<RoaringGraph>(RoaringGraph(g));
+            } else {
+                G_b = make_shared<BitsetGraph>(BitsetGraph(g));
+            }
+
             stop = high_resolution_clock::now();
             if (verbose) {
-                //cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
+                cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
+            }
+            solution = {};
+
+            int level = 0;
+            while (R->type != LEAF) {
+                start = high_resolution_clock::now();
+                //cout << "solving level " << level << "..";
+                traverse(R);
+                level++;
+                stop = high_resolution_clock::now();
+                if (verbose) {
+                    //cout << "[DONE] - " << duration_cast<seconds>(stop - start).count() << " seconds\n";
+                }
             }
         }
+
 
         std::cout << "Size of solution: " << solution.size() << "\n";
         if (method == "roaring")
