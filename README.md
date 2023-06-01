@@ -15,6 +15,8 @@ from the root directory. The compiled binary should be placed in the `build/` di
 
 The usage for the output binary:
 `PACE <graph>.gr`
-
+if the input is a command line argument. Otherwise, the `.gr` file or the full graph input can be pass to the standard input after running 
+`PACE` 
+without any command line arguments.
 ## Release
 A compiled binary is included in the release. You may need to run `chmod u+x PACE` before being able to run it.
