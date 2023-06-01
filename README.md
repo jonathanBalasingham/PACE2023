@@ -15,7 +15,6 @@ from the root directory. The compiled binary should be placed in the `build/` di
 
 The usage for the output binary:
 `PACE <graph>.gr`
-The resulting `tww` file will be output to the same directory from which the binary is run. The name of the output file will match the input graph file with the extension changed from `.gr` to `.tww`.
 
 ## Release
 A compiled binary is included in the release. You may need to run `chmod u+x PACE` before being able to run it.
