@@ -9,44 +9,30 @@ using namespace std;
 
 #include <vector>
 #include <iostream>
-#include <boost/dynamic_bitset.hpp>
-//#include "graph.h"
 #include <chrono>
 #include <numeric>
-#include "graph_v2.h"
 #include "graph_v3.h"
+#include <memory>
+#include <set>
 
 using namespace std::chrono;
-
+using namespace std;
 
 class Solver {
 private:
-    shared_ptr<BitsetGraph> G_b;
     shared_ptr<RoaringGraph> G_r;
     vector<pair<int, int>> solution;
     std::string method;
 
     int solve_module(const set<int>& node_subset) {
-        if (method == "db") {
-            boost::dynamic_bitset<> node_subset_bitset(G_b->original_size());
-            for (auto n : node_subset)
-                node_subset_bitset[n] = true;
+        Roaring node_subset_bitset;
+        for (auto n : node_subset)
+            node_subset_bitset.add(n);
 
-            auto cs = G_b->bfs_solve(node_subset_bitset);
+        auto cs = G_r->bfs_solve(node_subset_bitset);
 
-            solution.insert(solution.end(), cs.begin(), cs.end());
-            return cs.back().first;
-        } else {
-            Roaring node_subset_bitset;
-            for (auto n : node_subset)
-                node_subset_bitset.add(n);
-
-            auto cs = G_r->bfs_solve(node_subset_bitset);
-
-            solution.insert(solution.end(), cs.begin(), cs.end());
-            return cs.back().first;
-
-        }
+        solution.insert(solution.end(), cs.begin(), cs.end());
+        return cs.back().first;
     }
 
     void traverse(node *N) {
@@ -93,12 +79,7 @@ public:
 
             method = m;
 
-            if (method == "roaring") {
-                G_r = make_shared<RoaringGraph>(RoaringGraph(g));
-            } else {
-                G_b = make_shared<BitsetGraph>(BitsetGraph(g));
-            }
-
+            G_r = make_shared<RoaringGraph>(RoaringGraph(g));
             solution = {};
 
             int level = 0;

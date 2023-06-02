@@ -6,8 +6,9 @@
 #define PACE_GRAPH_V2_H
 
 #include <boost/dynamic_bitset.hpp>
-#include "graph.h"
 #include "roaring.hh"
+#include "dm_english.h"
+#include <set>
 //#include "roaring.c"
 
 using namespace std;

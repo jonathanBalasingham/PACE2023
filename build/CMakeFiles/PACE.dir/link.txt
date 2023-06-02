@@ -1,1 +1,1 @@
-/usr/bin/c++ -O3 -Wall -Wextra CMakeFiles/PACE.dir/main.cpp.o CMakeFiles/PACE.dir/dm.c.o CMakeFiles/PACE.dir/roaring.c.o -o PACE 
+/usr/bin/c++ -O3 -Wall -Wextra CMakeFiles/PACE.dir/main.cpp.o CMakeFiles/PACE.dir/dm.c.o CMakeFiles/PACE.dir/roaring.c.o -o /home/jonathan/CLionProjects/PACE/PACE  -static 

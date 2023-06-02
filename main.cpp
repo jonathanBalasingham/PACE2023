@@ -5,6 +5,18 @@
 #include <csignal>
 #include <string>
 
+long mystoi(const char *s)
+{
+    long i;
+    i = 0;
+    while(*s >= '0' && *s <= '9')
+    {
+        i = i * 10 + (*s - '0');
+        s++;
+    }
+    return i;
+}
+
 std::vector<std::string> split(const std::string& s, const std::string& delimiter) {
     size_t pos_start = 0, pos_end, delim_len = delimiter.length();
     std::string token;
@@ -46,8 +58,8 @@ graph from_string(const std::string& graph_as_string) {
     auto lines = split(graph_as_string, "\n");
     auto firstLine = lines[0];
     auto parameters = split(firstLine, " ");
-    n = std::stoi(parameters[2]);
-    int nedges = std::stoi(parameters[3]);
+    n = mystoi(parameters[2].c_str());
+    int nedges = mystoi(parameters[3].c_str());
 
     G.n=n;
     G.e=nedges;
@@ -87,8 +99,8 @@ graph from_file(const std::string& file, int verbose) {
         std::string firstLine;
         std::getline(f, firstLine);
         auto parameters = split(firstLine, " ");
-        n = std::stoi(parameters[2]);
-        nedges = std::stoi(parameters[3]);
+        n = mystoi(parameters[2].c_str());
+        nedges = mystoi(parameters[3].c_str());
 
         G.n=n;
         G.e=nedges;
@@ -100,8 +112,8 @@ graph from_file(const std::string& file, int verbose) {
         while (std::getline(f, line)) {
             if (!line.empty() or line[0] == 'c') {
                 auto vertices_involved = split(line, " ");
-                auto n1 = stoi(vertices_involved[0]) - 1;
-                auto n2 = stoi(vertices_involved[1]) - 1;
+                auto n1 = mystoi(vertices_involved[0].c_str()) - 1;
+                auto n2 = mystoi(vertices_involved[1].c_str()) - 1;
                 add_edge(G, n1, n2);
             }
         }
@@ -147,7 +159,7 @@ void write_contraction_sequence(std::string filename, std::vector<std::pair<int,
 }
 
 Solver s;
-std::string filename = "results.tww";
+std::string filename = "r.tww";
 
 vector<pair<int, int>> finish_sequence() {
     auto nodes_left = s.get_graph()->get_nodes();
@@ -174,6 +186,84 @@ std::string get_line() {
     return line;
 }
 
+std::string read_token() {
+    std::string result;
+    std::cin >> std::noskipws;
+    char c;
+    while (std::cin >> c)
+    {
+        if(c == '\t' || c == ' ')
+            break;
+        result.push_back(c);
+    }
+    return result;
+}
+
+graph from_cin2() {
+    int i, j, n;
+    int nedges;
+    char c;
+    std::string tww;
+    cin >> c >> tww >> n >> nedges;
+    int edges_added = 0;
+    graph G;
+    G.n=n;
+    G.e=nedges;
+    G.G=(adj **)malloc(n*sizeof(adj *));
+    for(i=0;i<n;i++)
+        G.G[i]=NULL;
+
+    while(edges_added < nedges) {
+        cin >> i >> j;
+        add_edge(G, i - 1, j - 1);
+        edges_added++;
+    }
+    return G;
+}
+
+graph from_cin() {
+    graph G;
+    int i,j,n;
+    int nedges = -1;
+    char current_char;
+    int n1, n2;
+    int edges_added = 0;
+
+    while (true) {
+        cin >> current_char;
+        if (current_char == '\n')
+            continue;
+        if (current_char == 'c') {
+            cin >> current_char;
+        } else if (current_char == 'p') {
+            //cin >> current_char; // space
+            cin >> current_char; // t
+            cin >> current_char; // w
+            cin >> current_char; // w
+            //cin >> current_char; // space
+            cin >> n;
+            //cin >> current_char;
+            cin >> nedges;
+            G.n=n;
+            G.e=nedges;
+            G.G=(adj **)malloc(n*sizeof(adj *));
+            for(i=0;i<n;i++)
+                G.G[i]=NULL;
+
+            while (edges_added != nedges) {
+                cin >> n1;
+                cin >> n2;
+                add_edge(G, n1 - 1, n2 - 1);
+                edges_added++;
+            }
+        }
+        if (edges_added == nedges) {
+            break;
+        }
+    }
+    return G;
+}
+
 graph from_stdin() {
     graph G;
     int i,j,n;
@@ -193,8 +283,8 @@ graph from_stdin() {
         while (true) {
             if (line.starts_with("p")) {
                 auto pline = split(line, " ");
-                nedges = stoi(pline[3]);
-                n = stoi(pline[2]);
+                nedges = mystoi(pline[3].c_str());
+                n = mystoi(pline[2].c_str());
                 G.n=n;
                 G.e=nedges;
                 G.G=(adj **)malloc(n*sizeof(adj *));
@@ -204,8 +294,8 @@ graph from_stdin() {
 
             } else if(!line.empty() and !line.starts_with("c")) {
                 auto edge = split(line , " ");
-                int n1 = stoi(edge[0]) - 1;
-                int n2 = stoi(edge[1]) - 1;
+                int n1 = mystoi(edge[0].c_str()) - 1;
+                int n2 = mystoi(edge[1].c_str()) - 1;
                 add_edge(G, n1, n2);
                 edges_added++;
             }
@@ -226,15 +316,19 @@ void handle_sigint( int signum ) {
 
 int main(int argc, char** argv) {
     graph G;
-    if (argc < 2) {
-        G = from_stdin();
-    } else {
-        G = from_file(argv[1], 0);
-    }
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+    cout.tie(nullptr);
+    G = from_stdin();
+
+    //if (argc < 2) {
+        //G = from_cin2();
+    //    G = from_stdin();
+    //} else {
+    //    G = from_file(argv[1], 0);
+    //}
 
     signal(SIGINT, handle_sigint);
-
-    s = Solver();
     auto sol = s.solve(G, true, "roaring", G.n > 150000);
     write_contraction_sequence(sol);
     return 0;

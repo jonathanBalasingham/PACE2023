@@ -10,7 +10,8 @@ using namespace std;
 
 #include <iostream>
 #include "roaring.hh"
-#include "graph.h"
+#include "dm_english.h"
+#include <cmath>
 
 class RoaringGraph {
 private:
